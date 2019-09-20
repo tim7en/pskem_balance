@@ -1,0 +1,159 @@
+---
+title: "GIS and Spatial Data Management for a Pskem River Watershed"
+author: "Timur Sabitov"
+organization: "U.S. Geological Survey"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r }
+```
+First, clean work space and load required libraries
+
+```{r, message = FALSE}
+rm(list=ls(all=T)) 
+require (sp)
+require(raster)
+require (rgdal)
+require (maptools)
+require (OasisR)
+```
+
+Next, load a watershed polygon, as well as polygons of glaciers.
+Following code reads shape files of polygons.
+```{r, message = FALSE, include=FALSE}
+#Important
+# You can use option file.choose, to navigate into directory and load file this way.
+# You can perform similar operation for all other input files in this function.
+# myFile <- file.choose()
+# watershedPoly <- readOGR(myFile)
+
+#Personal upload of shape files.
+watershedPoly <- readOGR("D:/WorkingDir/Mapping_Projects/Thesis_pskem/DA_Pskem.shp")
+glaciersPoly <- readOGR("D:/WorkingDir/Mapping_Projects/Thesis_pskem/Landcover.shp")
+```
+
+Let's take look at plot of watershed boundary overlayed with glaciers.
+```{r}
+plot (watershedPoly)
+plot (glaciersPoly, add = T, col = "lightblue")
+```
+
+Ok, let's load rest of the files for spatial analysis.
+```{r, message = FALSE}
+#Load DEM
+DEM <- raster ("D:/WorkingDir/Mapping_Projects/Thesis_pskem/DEM/PSKEM_DEM_Clipped_UTM1.tif")
+#Load band 10 & 11 into R, from Landsat 8
+band_10 <- raster("D:/WorkingDir/Mapping_Projects/Thesis_pskem/Landsat_B10_B11/band10.tif") #change image name accordingly
+band_11 <- raster("D:/WorkingDir/Mapping_Projects/Thesis_pskem/Landsat_B10_B11/band11.tif") #change image name accordingly
+```
+
+Check projections and resolution.
+```{r}
+watershedPoly
+glaciersPoly
+DEM
+band_10
+band_11
+```
+
+Ok, projections are different. We need to reproject shape files.
+This is how it is done.
+```{r}
+#Reproject shapefiles into the same projection as DEM raster file
+watershedPoly <- spTransform(watershedPoly, crs(DEM))
+glaciersPoly <- spTransform (glaciersPoly, crs (DEM))
+
+#Raster projection works same way but using projectRaster function
+#projected_raster <- projectRaster(r, crs = sr)# Project Raster
+```
+
+Next step is to clip raster by polygon shape
+```{r}
+#Set extent of the raster to clip and clip it to watershed.
+myExtent <- extent (watershedPoly)
+DEM <- crop (DEM, myExtent)
+band_10 <- crop (band_10, myExtent)
+band_11 <- crop (band_11, myExtent)
+
+#To remove pixels outside of the polygon, mask raster with polygon.
+DEM <- mask (DEM, watershedPoly)
+band_10 <- mask (band_10, watershedPoly)
+band_11 <- mask (band_11, watershedPoly)
+```
+
+Check files one more time.
+```{r}
+band_10
+band_11
+DEM
+```
+
+As you can see, cell values are slightly off, we need to correct them as well.
+```{r}
+#Extents are different, so as resolution, we need to resample data.
+band_10 = resample(band_10, DEM, "bilinear") #Just to be quicker, we resample to 27, instead one should consider resampling to 30m.
+band_11 = resample(band_11, DEM, "bilinear")
+```
+
+Radiance to temperature conversion.
+```{r}
+#Convert radiance into temperature values
+RADIANCE_MULT_BAND_10 <- 3.3420E-04 #Values from Metafile
+RADIANCE_MULT_BAND_11 <- 3.3420E-04
+
+RADIANCE_ADD_BAND_10 <- 0.10000
+RADIANCE_ADD_BAND_11 <- 0.10000
+
+#Calculate TOA from DN:
+toa_band10 <- calc(band_10, fun=function(x){RADIANCE_MULT_BAND_10 * x + RADIANCE_ADD_BAND_10})
+toa_band11 <- calc(band_11, fun=function(x){RADIANCE_MULT_BAND_11 * x + RADIANCE_ADD_BAND_11})
+
+#Values from Metafile
+K1_CONSTANT_BAND_10 <- 774.8853
+K1_CONSTANT_BAND_11 <- 480.8883
+K2_CONSTANT_BAND_10 <- 1321.0789
+K2_CONSTANT_BAND_11 <- 1201.1442
+
+#Calculate LST in Kelvin for Band 10 and Band 11
+temp10_kelvin <- calc(toa_band10, fun=function(x){K2_CONSTANT_BAND_10/log(K1_CONSTANT_BAND_10/x + 1)})
+temp11_kelvin <- calc(toa_band11, fun=function(x){K2_CONSTANT_BAND_11/log(K1_CONSTANT_BAND_11/x + 1)})
+
+#Convert Kelvin to Celsius for Band 10 and 11
+temp10_celsius <- calc(temp10_kelvin, fun=function(x){x - 273.15})
+temp11_celsius <- calc(temp11_kelvin, fun=function(x){x - 273.15})
+```
+
+To extract slope and aspect from DEM.
+```{r}
+x <- terrain(DEM, opt=c('slope', 'aspect'), unit='degrees')
+```
+
+To create a stack of rasters.
+```{r}
+s <- stack(temp10_celsius, temp11_celsius, x$slope, x$aspect, DEM)
+#Plot stacks.
+plot (s)
+```
+
+To create a user defined function that applied to each cell of the raster inside of the polygons.
+```{r}
+multi.fun <- function(x, na.rm = T) {
+  c(min = min(x, na.rm = T), mean = mean(x, na.rm = T), max = max(x, na.rm = T), sd = sd(x, na.rm =  T))
+}
+```
+
+To extract values of function for each polygon of the glacier.
+```{r}
+Output <- extract (s, glaciersPoly, fun = multi.fun, df = TRUE, na.rm=FALSE)
+head (Output)
+```
+
+If you need area and perimeter of the polygon.
+```{r}
+area (glaciersPoly)
+perimeter (glaciersPoly)
+```
+
+Well done!
