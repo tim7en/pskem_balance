@@ -46,28 +46,28 @@ plot (precipitationFebruary, type = 'l', main = 'Precipitation in February (mm),
 y <- movavg(precipitationFebruary$`mean(P)`, 3, "s"); lines(data.frame(precipitationFebruary$year, y), lty = 3,lwd = 0.5, col = 2)
 y <- movavg(precipitationFebruary$`mean(P)`, 3, "w"); lines(data.frame(precipitationFebruary$year, y),lty = 3,lwd = 0.5, col = 4)
 y <- movavg(precipitationFebruary$`mean(P)`, 3, "e"); lines(data.frame(precipitationFebruary$year, y),lty = 3,lwd = 0.5, col = 6)
-
+abline(lm(precipitationFebruary$`mean(P)`~precipitationFebruary$year), col="red")
 grid()
 
 plot (precipitationJune, type = 'l', main = 'Precipitation in June (mm), Pskem', xaxt = 'n')
 y <- movavg(precipitationJune$`mean(P)`, 3, "s"); lines(data.frame(precipitationJune$year, y),lty = 3,lwd = 0.5, col = 2)
 y <- movavg(precipitationJune$`mean(P)`, 3, "w"); lines(data.frame(precipitationJune$year, y),lty = 3,lwd = 0.5, col = 4)
 y <- movavg(precipitationJune$`mean(P)`, 3, "e"); lines(data.frame(precipitationJune$year, y),lty = 3,lwd = 0.5, col = 6)
-
+abline(lm(precipitationJune$`mean(P)`~precipitationFebruary$year), col="red")
 grid()
 
-plot (dischargeMay, type = 'l', main = 'Discharge in May (mm), Pskem')
+plot (dischargeMay, type = 'l', main = 'Discharge in May (cms), Pskem')
 y <- movavg(dischargeMay$`mean(Q)`, 3, "s"); lines(data.frame(dischargeMay$year, y),lty = 3,lwd = 0.5, col = 2)
 y <- movavg(dischargeMay$`mean(Q)`, 3, "w"); lines(data.frame(dischargeMay$year, y),lty = 3,lwd = 0.5, col = 4)
 y <- movavg(dischargeMay$`mean(Q)`, 3, "e"); lines(data.frame(dischargeMay$year, y),lty = 3,lwd = 0.5, col = 6)
-
+abline(lm(dischargeMay$`mean(Q)`~precipitationFebruary$year), col="red")
 grid()
 
-plot (dischargeAugust, type = 'l',  main = 'Discharge in August (mm), Pskem')
+plot (dischargeAugust, type = 'l',  main = 'Discharge in August (cms), Pskem')
 y <- movavg(dischargeAugust$`mean(Q)`, 3, "s"); lines(data.frame(dischargeAugust$year, y),lty = 3,lwd = 0.5, col = 2)
 y <- movavg(dischargeAugust$`mean(Q)`, 3, "w"); lines(data.frame(dischargeAugust$year, y),lty = 3,lwd = 0.5, col = 4)
 y <- movavg(dischargeAugust$`mean(Q)`, 3, "e"); lines(data.frame(dischargeAugust$year, y),lty = 3,lwd = 0.5, col = 6)
-
+abline(lm(dischargeAugust$`mean(Q)`~precipitationFebruary$year), col="red")
 grid()
 legend(2012, 125, c("original data", "simple",  "weighted",
                   "exponential"),
@@ -85,9 +85,3 @@ mtext("Rainfall (mm)", side=4, line=3)
 ## Plot flow on top
 par(new=TRUE)
 plot(dates, flow, type="l", lwd=2, ylim=c(0, max(flow)*1.5), ylab  = 'Flow (m3/s)', xlab = 'Dates')
-
-
-
-
-
-
