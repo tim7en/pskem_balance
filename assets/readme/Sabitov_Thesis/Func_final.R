@@ -322,7 +322,7 @@ Nash<-function (mod,obs){
 }
 
 #compute Bias
-Bias<-function (mod,obs,N){
-  Bias<-sum(mod-obs)/N
+Bias<-function (mod,obs){
+  Bias<-sum(mod-obs)/length (mod)
   return (Bias)
 }
